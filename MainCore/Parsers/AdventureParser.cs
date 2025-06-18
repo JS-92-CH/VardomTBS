@@ -90,8 +90,9 @@
         private static string GetAdventureDifficult(HtmlNode node)
         {
             var tdList = node.Descendants("td").ToArray();
-            if (tdList.Length < 3) return "unknown";
-            var iconDifficulty = tdList[3].FirstChild;
+            if (tdList.Length < 4) return "unknown";
+            var iconDifficulty = tdList[3].Descendants("i").FirstOrDefault();
+            if (iconDifficulty is null) return "unknown";
             return iconDifficulty.GetAttributeValue("alt", "unknown");
         }
 

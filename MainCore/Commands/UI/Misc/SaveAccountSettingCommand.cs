@@ -1,5 +1,7 @@
 ﻿using MainCore.Constraints;
+using MainCore.Entities;
 using MainCore.Notifications.Behaviors;
+using Microsoft.EntityFrameworkCore;
 
 namespace MainCore.Commands.UI.Misc
 {
@@ -15,17 +17,24 @@ namespace MainCore.Commands.UI.Misc
             CancellationToken cancellationToken
             )
         {
-            await Task.CompletedTask;
             var (accountId, settings) = command;
             if (settings.Count == 0) return;
 
             foreach (var setting in settings)
             {
-                context.AccountsSetting
-                    .Where(x => x.AccountId == accountId.Value)
-                    .Where(x => x.Setting == setting.Key)
-                    .ExecuteUpdate(x => x.SetProperty(x => x.Value, setting.Value));
+                var dbSetting = await context.AccountsSetting
+                    .FirstOrDefaultAsync(x => x.AccountId == accountId.Value && x.Setting == setting.Key, cancellationToken);
+
+                if (dbSetting is not null)
+                {
+                    if (dbSetting.Value != setting.Value)
+                    {
+                        dbSetting.Value = setting.Value;
+                    }
+                }
             }
+
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 }

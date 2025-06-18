@@ -94,7 +94,9 @@ namespace MainCore.UI.ViewModels.Tabs
 
             using var scope = _serviceScopeFactory.CreateScope(AccountId);
             var getSettingQuery = scope.ServiceProvider.GetRequiredService<GetSettingQuery.Handler>();
-            var settings = getSettingQuery.HandleAsync(new(AccountId));
+
+            // Corrected line: added 'await'
+            var settings = await getSettingQuery.HandleAsync(new(AccountId));
 
             var jsonString = JsonSerializer.Serialize(settings);
             await File.WriteAllTextAsync(path, jsonString);

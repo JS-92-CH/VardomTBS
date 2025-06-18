@@ -1,4 +1,8 @@
 ﻿using MainCore.Constraints;
+using MainCore.Errors;
+using MainCore.Parsers;
+using MainCore.Services;
+using OpenQA.Selenium;
 
 namespace MainCore.Commands.Features.StartAdventure
 {
@@ -12,23 +16,22 @@ namespace MainCore.Commands.Features.StartAdventure
             IChromeBrowser browser,
             CancellationToken cancellationToken)
         {
-
             var html = browser.Html;
 
             var adventure = AdventureParser.GetHeroAdventureButton(html);
             if (adventure is null) return Retry.ButtonNotFound("hero adventure");
 
-            static bool TableShow(IWebDriver driver)
+            var result = await browser.Click(By.XPath(adventure.XPath));
+            if (result.IsFailed) return result;
+
+            // This wait is more robust as it only checks for page content, not the URL.
+            result = await browser.Wait(driver =>
             {
                 var doc = new HtmlDocument();
                 doc.LoadHtml(driver.PageSource);
                 return AdventureParser.IsAdventurePage(doc);
-            }
+            }, cancellationToken);
 
-            var result = await browser.Click(By.XPath(adventure.XPath));
-            if (result.IsFailed) return result;
-
-            result = await browser.WaitPageChanged("adventures", TableShow, cancellationToken);
             if (result.IsFailed) return result;
 
             return Result.Ok();
