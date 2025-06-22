@@ -44,6 +44,9 @@ namespace MainCore.Services
             options.AddArgument("--ignore-certificate-errors");
             options.AddArguments("--no-default-browser-check", "--no-first-run", "--ash-no-nudges");
             options.AddArguments("--mute-audio", "--disable-gpu", "--disable-search-engine-choice-screen");
+            options.AddUserProfilePreference("credentials_enable_service", false);
+            options.AddUserProfilePreference("profile.password_manager_enabled", false);
+            options.AddUserProfilePreference("profile.password_manager_leak_detection", false);
 
             options.AddExcludedArgument("enable-automation");
             options.AddAdditionalOption("useAutomationExtension", "undefined");
