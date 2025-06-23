@@ -11,6 +11,15 @@
           "Microsoft.Extensions.Hosting": "9.0.4"
         }
       },
+      "DotNetSeleniumExtras.WaitHelpers": {
+        "type": "Direct",
+        "requested": "[3.11.0, )",
+        "resolved": "3.11.0",
+        "contentHash": "xc6jVVl5ymgk3ZNWnC/KHxkEup1QpnwYbrwF+NQoCOGERsD8YMlLwmsX4lGhLXCLo/YQTRTIwlKCN9E/doGUNg==",
+        "dependencies": {
+          "Selenium.WebDriver": "3.10.0"
+        }
+      },
       "FluentResults": {
         "type": "Direct",
         "requested": "[3.16.0, )",

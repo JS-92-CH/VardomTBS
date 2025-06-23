@@ -14,7 +14,7 @@ namespace MainCore.Services
         ChromeDriver Driver { get; }
         HtmlDocument Html { get; }
 
-        // MODIFIED: Use Serilog's ILogger to match your application
+        Result<IWebElement> WaitUntilVisible(By by, TimeSpan? timeout = null);
         Serilog.ILogger Logger { get; set; }
 
         Task<Result> Click(By by);

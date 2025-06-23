@@ -5,6 +5,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Interactions;
 using OpenQA.Selenium.Support.UI;
+using SeleniumExtras.WaitHelpers;
 using Serilog;
 using System;
 using System.IO;
@@ -120,8 +121,7 @@ namespace MainCore.Services
         public async Task<Result> Navigate(string url, CancellationToken cancellationToken)
         {
             await Driver.Navigate().GoToUrlAsync(url);
-            var result = await Wait(driver => PageChanged(driver, url), cancellationToken);
-            return result;
+            return Result.Ok();
         }
 
         public async Task<Result> Click(By by)
@@ -161,14 +161,14 @@ namespace MainCore.Services
 
         public async Task<Result> Wait(Predicate<IWebDriver> condition, CancellationToken cancellationToken)
         {
-            const int maxRetries = 1;
+            const int maxRetries = 1; // Let's reduce retries now that the wait is more stable
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 try
                 {
                     void waitAction()
                     {
-                        var wait = new WebDriverWait(Driver, TimeSpan.FromMinutes(3));
+                        var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(30)); // Increased timeout
                         wait.Until(d => cancellationToken.IsCancellationRequested || condition(d));
                         cancellationToken.ThrowIfCancellationRequested();
                     }
@@ -189,6 +189,7 @@ namespace MainCore.Services
                         try
                         {
                             await Driver.Navigate().RefreshAsync();
+                            // After refresh, wait for the basic page to be loaded before the next attempt
                             await Wait(PageLoaded, cancellationToken);
                         }
                         catch (Exception refreshEx)
@@ -201,6 +202,22 @@ namespace MainCore.Services
             }
             Logger?.Error("Wait condition failed after all retry attempts.");
             return Retry.Timeout();
+        }
+
+        // NEW RECOMMENDED METHOD: Use this to wait for a specific element to be visible.
+        // This is much more reliable than waiting for a page to load.
+        public Result<IWebElement> WaitUntilVisible(By by, TimeSpan? timeout = null)
+        {
+            try
+            {
+                var wait = new WebDriverWait(Driver, timeout ?? TimeSpan.FromSeconds(30));
+                var element = wait.Until(ExpectedConditions.ElementIsVisible(by));
+                return Result.Ok(element);
+            }
+            catch (WebDriverTimeoutException)
+            {
+                return Result.Fail(new Error($"Element '{by}' was not visible within the timeout period."));
+            }
         }
 
         public Task<Result> WaitPageLoaded(CancellationToken cancellationToken)

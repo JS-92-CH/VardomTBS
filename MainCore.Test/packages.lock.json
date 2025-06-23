@@ -159,6 +159,14 @@
           "System.Management": "6.0.1"
         }
       },
+      "DotNetSeleniumExtras.WaitHelpers": {
+        "type": "Transitive",
+        "resolved": "3.11.0",
+        "contentHash": "xc6jVVl5ymgk3ZNWnC/KHxkEup1QpnwYbrwF+NQoCOGERsD8YMlLwmsX4lGhLXCLo/YQTRTIwlKCN9E/doGUNg==",
+        "dependencies": {
+          "Selenium.WebDriver": "3.10.0"
+        }
+      },
       "DynamicData": {
         "type": "Transitive",
         "resolved": "9.1.2",
@@ -1461,6 +1469,7 @@
         "type": "Project",
         "dependencies": {
           "CP.Extensions.Hosting.SingleInstance": "[2.1.13, )",
+          "DotNetSeleniumExtras.WaitHelpers": "[3.11.0, )",
           "FluentResults": "[3.16.0, )",
           "FluentValidation": "[12.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
