@@ -1,4 +1,7 @@
-﻿namespace MainCore.Errors
+﻿using FluentResults;
+using OpenQA.Selenium;
+
+namespace MainCore.Errors
 {
     public class Retry : Error
     {
@@ -17,5 +20,8 @@
         public static Retry ElementNotClickable(By by) => new($"Element {by} not clickable");
 
         public static Retry OutOfIndexTab(int index, int count) => new($"Found {count} tabs but need tab {index + 1} active");
+
+        // ADDED: A new error type for timeout failures
+        public static Retry Timeout() => new("The operation timed out after retries");
     }
 }

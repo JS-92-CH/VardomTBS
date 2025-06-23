@@ -1,7 +1,16 @@
-﻿using OpenQA.Selenium.Chrome;
+﻿using FluentResults;
+using HtmlAgilityPack;
+using MainCore.Errors;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Interactions;
 using OpenQA.Selenium.Support.UI;
+using Serilog;
+using System;
+using System.IO;
 using System.IO.Compression;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MainCore.Services
 {
@@ -10,14 +19,12 @@ namespace MainCore.Services
         private ChromeDriver? _driver;
         private readonly ChromeDriverService _chromeService;
         private WebDriverWait _wait = null!;
-
         private readonly string[] _extensionsPath;
         private readonly HtmlDocument _htmlDoc = new();
 
         public ChromeBrowser(string[] extensionsPath)
         {
             _extensionsPath = extensionsPath;
-
             _chromeService = ChromeDriverService.CreateDefaultService();
             _chromeService.HideCommandPromptWindow = true;
         }
@@ -25,9 +32,7 @@ namespace MainCore.Services
         public async Task Setup(ChromeSetting setting)
         {
             var options = new ChromeOptions();
-
             options.AddExtensions(_extensionsPath);
-
             if (!string.IsNullOrEmpty(setting.ProxyHost))
             {
                 if (!string.IsNullOrEmpty(setting.ProxyUsername) && !string.IsNullOrEmpty(setting.ProxyPassword))
@@ -39,7 +44,6 @@ namespace MainCore.Services
                     options.AddArgument($"--proxy-server={setting.ProxyHost}:{setting.ProxyPort}");
                 }
             }
-
             options.AddArgument($"--user-agent={setting.UserAgent}");
             options.AddArgument("--ignore-certificate-errors");
             options.AddArguments("--no-default-browser-check", "--no-first-run", "--ash-no-nudges");
@@ -47,17 +51,14 @@ namespace MainCore.Services
             options.AddUserProfilePreference("credentials_enable_service", false);
             options.AddUserProfilePreference("profile.password_manager_enabled", false);
             options.AddUserProfilePreference("profile.password_manager_leak_detection", false);
-
             options.AddExcludedArgument("enable-automation");
             options.AddAdditionalOption("useAutomationExtension", "undefined");
-
             options.AddArgument("--disable-background-timer-throttling");
             options.AddArgument("--disable-backgrounding-occluded-windows");
             options.AddArgument("--disable-features=CalculateNativeWinOcclusion");
             options.AddArgument("--disable-features=UserAgentClientHint");
             options.AddArgument("--disable-features=DisableLoadExtensionCommandLineSwitch");
             options.AddArgument("--disable-blink-features=AutomationControlled");
-
             if (setting.IsHeadless)
             {
                 options.AddArgument("--headless=new");
@@ -69,19 +70,14 @@ namespace MainCore.Services
             }
             var pathUserData = Path.Combine(AppContext.BaseDirectory, "Data", "Cache", setting.ProfilePath);
             if (!Directory.Exists(pathUserData)) Directory.CreateDirectory(pathUserData);
-
             pathUserData = Path.Combine(pathUserData, string.IsNullOrEmpty(setting.ProxyHost) ? "default" : setting.ProxyHost);
-
             options.AddArguments($"user-data-dir={pathUserData}");
-
             _driver = await Task.Run(() => new ChromeDriver(_chromeService, options, TimeSpan.FromMinutes(3)));
-
             _driver.Manage().Timeouts().PageLoad = TimeSpan.FromMinutes(3);
-            _wait = new WebDriverWait(_driver, TimeSpan.FromMinutes(3)); // watch ads
+            _wait = new WebDriverWait(_driver, TimeSpan.FromMinutes(3));
         }
 
         public ChromeDriver Driver => _driver!;
-
         public HtmlDocument Html
         {
             get
@@ -90,6 +86,10 @@ namespace MainCore.Services
                 return _htmlDoc;
             }
         }
+        public string CurrentUrl => Driver.Url;
+
+        // THIS IS THE FIX: Added '= null!' to satisfy the non-nullable property rule.
+        public Serilog.ILogger Logger { get; set; } = null!;
 
         public async Task Shutdown()
         {
@@ -97,10 +97,6 @@ namespace MainCore.Services
             await Close();
             _chromeService.Dispose();
         }
-
-        public string CurrentUrl => Driver.Url;
-
-        public ILogger Logger { get; set; } = null!;
 
         public async Task<string> Screenshot()
         {
@@ -119,7 +115,6 @@ namespace MainCore.Services
         }
 
         private static bool PageLoaded(IWebDriver driver) => ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState")?.Equals("complete") ?? false;
-
         private static bool PageChanged(IWebDriver driver, string url_nested) => driver.Url.Contains(url_nested) && PageLoaded(driver);
 
         public async Task<Result> Navigate(string url, CancellationToken cancellationToken)
@@ -152,7 +147,6 @@ namespace MainCore.Services
                 element.SendKeys(Keys.Shift + Keys.End);
                 element.SendKeys(content);
             }
-
             await Task.Run(input);
             return Result.Ok();
         }
@@ -167,20 +161,46 @@ namespace MainCore.Services
 
         public async Task<Result> Wait(Predicate<IWebDriver> condition, CancellationToken cancellationToken)
         {
-            void wait()
+            const int maxRetries = 1;
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                _wait.Until(driver => condition(driver), cancellationToken);
+                try
+                {
+                    void waitAction()
+                    {
+                        var wait = new WebDriverWait(Driver, TimeSpan.FromMinutes(3));
+                        wait.Until(d => cancellationToken.IsCancellationRequested || condition(d));
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                    await Task.Run(waitAction, cancellationToken);
+                    return Result.Ok();
+                }
+                catch (OperationCanceledException ex)
+                {
+                    Logger?.Warning(ex, "Wait operation was cancelled by user.");
+                    return new Error("Wait operation was cancelled.").CausedBy(ex);
+                }
+                catch (WebDriverTimeoutException ex)
+                {
+                    Logger?.Warning(ex, "Wait condition timed out on attempt {Attempt}.", attempt + 1);
+                    if (attempt < maxRetries)
+                    {
+                        Logger?.Information("Attempting to refresh page and retry.");
+                        try
+                        {
+                            await Driver.Navigate().RefreshAsync();
+                            await Wait(PageLoaded, cancellationToken);
+                        }
+                        catch (Exception refreshEx)
+                        {
+                            Logger?.Error(refreshEx, "Failed to refresh page during retry attempt.");
+                            return Result.Fail($"Failed to refresh page after timeout. Last error: {refreshEx.Message}");
+                        }
+                    }
+                }
             }
-
-            try
-            {
-                await Task.Run(wait, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return Cancel.Error;
-            }
-            return Result.Ok();
+            Logger?.Error("Wait condition failed after all retry attempts.");
+            return Retry.Timeout();
         }
 
         public Task<Result> WaitPageLoaded(CancellationToken cancellationToken)

@@ -16,19 +16,8 @@ namespace MainCore.Commands.UI.AddAccountsViewModel
             )
         {
             await Task.CompletedTask;
-            var existAccounts = context.Accounts
-                .ToDto()
-                .ToList();
-
-            var dtos = command.Dtos
-                .Where(dto => !existAccounts.Exists(x => x.Username == dto.Username && x.Server == dto.Server))
-                .ToList();
-
-            if (dtos.Count == 0)
-            {
-                return Result.Fail("All accounts are duplicated");
-            }
-            var accounts = dtos
+            
+            var accounts = command.Dtos
                 .Select(x => x.ToEntity());
 
             foreach (var access in accounts.SelectMany(x => x.Accesses).Where(access => string.IsNullOrEmpty(access.Useragent)))

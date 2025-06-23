@@ -186,7 +186,11 @@ namespace MainCore.Commands.Features.UpgradeBuilding
             var html = browser.Html;
 
             var button = UpgradeParser.GetUpgradeButton(html);
-            if (button is null) return Retry.ButtonNotFound("upgrade");
+            if (button is null)
+            {
+                if (UpgradeParser.IsReachingMaxLevel(html)) return Skip.ConstructionQueueFull;
+                return Retry.ButtonNotFound("upgrade");
+            }
 
             var result = await browser.Click(By.XPath(button.XPath));
             if (result.IsFailed) return result;

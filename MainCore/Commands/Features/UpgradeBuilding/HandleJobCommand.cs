@@ -1,5 +1,8 @@
 ﻿using MainCore.Constraints;
 using System.Text.Json;
+using MainCore.Enums;
+using MainCore.Entities;
+using MainCore.Infrasturecture.Persistence;
 
 namespace MainCore.Commands.Features.UpgradeBuilding
 {

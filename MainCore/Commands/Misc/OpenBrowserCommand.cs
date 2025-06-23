@@ -19,6 +19,7 @@ namespace MainCore.Commands.Misc
                 .Where(x => x.Id == accountId.Value)
                 .Select(x => new
                 {
+                    x.Id,
                     x.Username,
                     x.Server,
                 })
@@ -27,7 +28,7 @@ namespace MainCore.Commands.Misc
             var uri = new Uri(account.Server);
 
             var serverFolderName = uri.Host.Replace(".", "_");
-            var accountFolderName = account.Username;
+            var accountFolderName = $"{account.Username}_{account.Id}";
 
             var headlessChrome = context.BooleanByName(accountId, AccountSettingEnums.HeadlessChrome);
             var profilePath = Path.Combine(serverFolderName, accountFolderName);

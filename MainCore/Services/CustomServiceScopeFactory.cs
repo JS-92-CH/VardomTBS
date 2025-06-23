@@ -28,6 +28,7 @@ namespace MainCore.Services
                .Where(x => x.Id == accountId.Value)
                .Select(x => new
                {
+                   x.Id,
                    x.Username,
                    x.Server,
                })
@@ -36,7 +37,7 @@ namespace MainCore.Services
             var uri = new Uri(account.Server);
 
             dataService.AccountId = accountId;
-            dataService.AccountData = $"{account.Username}_{uri.Host}";
+            dataService.AccountData = $"{account.Username}_{account.Id}_{uri.Host}";
             return scope;
         }
     }

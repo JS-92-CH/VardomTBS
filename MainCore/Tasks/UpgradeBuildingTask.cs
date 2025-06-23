@@ -69,7 +69,21 @@ namespace MainCore.Tasks
                 }
 
                 result = await handleUpgradeCommand.HandleAsync(new(task.AccountId, task.VillageId, plan), cancellationToken);
-                if (result.IsFailed) return result;
+                if (result.IsFailed)
+                {
+                    if (result.HasError<Skip>())
+                    {
+                        var buildingQueue = await getFirstQueueBuildingQuery.HandleAsync(new(task.VillageId), cancellationToken);
+                        if (buildingQueue is null)
+                        {
+                            return Skip.BuildingJobQueueBroken;
+                        }
+
+                        task.ExecuteAt = buildingQueue.CompleteTime.AddSeconds(3);
+                        logger.Information("Construction queue is full. Schedule next run at {Time}", task.ExecuteAt.ToString("yyyy-MM-dd HH:mm:ss"));
+                    }
+                    return result;
+                }
 
                 logger.Information("Upgrade for {Type} at location {Location} completed successfully.", plan.Type, plan.Location);
 

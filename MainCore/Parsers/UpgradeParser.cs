@@ -78,5 +78,12 @@
                 .FirstOrDefault(x => x.HasClass("build"));
             return button;
         }
+        public static bool IsReachingMaxLevel(HtmlDocument doc)
+        {
+            var upgradeBuilding = doc.DocumentNode
+                .Descendants("div")
+                .FirstOrDefault(x => x.HasClass("upgradeBuilding") && x.HasClass("completed"));
+            return upgradeBuilding is not null;
+        }
     }
 }

@@ -18,14 +18,6 @@ namespace MainCore.Commands.UI.AddAccountViewModel
             await Task.CompletedTask;
             var dto = command.Dto;
 
-            if (context.Accounts
-                .Where(x => x.Username == dto.Username)
-                .Where(x => x.Server == dto.Server)
-                .Any())
-            {
-                return AccountDuplicate.Error;
-            }
-
             var account = dto.ToEntity();
             foreach (var access in account.Accesses.Where(access => string.IsNullOrEmpty(access.Useragent)))
             {
